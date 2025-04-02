@@ -3,10 +3,10 @@ from tkinter import filedialog
 import PyPDF2
 import spacy
 import nltk
-import unicodedata
-from nltk.corpus import wordnet, cess_esp, stopwords
+import unicodedata #Sirve para eliminar caracteres especiales
+from nltk.corpus import wordnet, cess_esp, stopwords # Importar librerías necesarias, sirve para la corrección ortográfica y sinónimos
 from nltk.metrics.distance import edit_distance
-from collections import defaultdict
+from collections import defaultdict #sirve para crear un diccionario con valores por defecto
 import json
 import os
 
@@ -19,246 +19,138 @@ nltk.download('stopwords')
 nlp = spacy.load("es_core_news_sm", disable=["parser", "ner"]) 
 
 # Configuración
-CACHE_FILE = "word_cache.json"
-MAX_CACHE_SIZE = 10000
-CONTEXT_WINDOW = 3  # Palabras alrededor para considerar contexto
+ARCHIVO_CACHE = "cache_palabras.json"
+MAX_TAMANO_CACHE = 10000
+VENTANA_CONTEXTO = 3  # Número de palabras alrededor para contexto
 
-# Corpus de palabras correctas (optimizado)
-correct_words = set(word.lower() for word in cess_esp.words() if word.isalpha())
+# Corpus de palabras correctas
+palabras_correctas = set(palabra.lower() for palabra in cess_esp.words() if palabra.isalpha())
 
-# Stopwords y términos protegidos
-spanish_stopwords = set(stopwords.words('spanish'))
-protected_terms = {"al", "a", "de", "del", "mi", "su", "la", "el", "los", "las"}
+# Palabras vacías y términos protegidos
+palabras_vacias = set(stopwords.words('spanish'))
+terminos_protegidos = {"al", "a", "de", "del", "mi", "su", "la", "el", "los", "las"}
 
 # Reemplazos formales predefinidos con contexto
-formal_replacements = {
-    "escuela": {"default": "institución", "contexts": {"educativa": "institución educativa"}},
-    "colegio": {"default": "centro educativo", "contexts": {"privado": "institución privada"}},
-    "chico": {"default": "joven", "contexts": {"hombre": "caballero"}},
-    "chica": {"default": "joven", "contexts": {"mujer": "señorita"}},
-    "bueno": {"default": "adecuado", "contexts": {"muy": "excelente"}},
-    "malo": {"default": "inadecuado", "contexts": {"muy": "deficiente"}}
+reemplazos_formales = {
+    "escuela": {"default": "institución", "contextos": {"educativa": "institución educativa"}},
+    "colegio": {"default": "centro educativo", "contextos": {"privado": "institución privada"}},
+    "chico": {"default": "joven", "contextos": {"hombre": "caballero"}},
+    "chica": {"default": "joven", "contextos": {"mujer": "señorita"}},
+    "bueno": {"default": "adecuado", "contextos": {"muy": "excelente"}},
+    "malo": {"default": "inadecuado", "contextos": {"muy": "deficiente"}}
 }
 
-class WordCache:
+class CachePalabras:
     """Cache para almacenar palabras ya procesadas y sus reemplazos óptimos."""
-    def __init__(self, cache_file=CACHE_FILE):
-        self.cache_file = cache_file
+    def __init__(self, archivo_cache=ARCHIVO_CACHE):
+        self.archivo_cache = archivo_cache
         self.cache = defaultdict(dict)
-        self.load_cache()
+        self.cargar_cache()
         
-    def load_cache(self):
-        if os.path.exists(self.cache_file):
+    def cargar_cache(self):
+        if os.path.exists(self.archivo_cache):
             try:
-                with open(self.cache_file, 'r', encoding='utf-8') as f:
+                with open(self.archivo_cache, 'r', encoding='utf-8') as f:
                     self.cache.update(json.load(f))
             except:
                 self.cache = defaultdict(dict)
     
-    def save_cache(self):
-        with open(self.cache_file, 'w', encoding='utf-8') as f:
+    def guardar_cache(self):
+        with open(self.archivo_cache, 'w', encoding='utf-8') as f:
             json.dump(dict(self.cache), f, ensure_ascii=False, indent=2)
     
-    def get(self, word, context):
-        context_key = self._context_to_key(context)
-        return self.cache.get(word.lower(), {}).get(context_key)
+    def obtener(self, palabra, contexto):
+        clave_contexto = self._clave_contexto(contexto)
+        return self.cache.get(palabra.lower(), {}).get(clave_contexto)
     
-    def set(self, word, context, replacement):
-        if len(self.cache) > MAX_CACHE_SIZE:
+    def establecer(self, palabra, contexto, reemplazo):
+        if len(self.cache) > MAX_TAMANO_CACHE:
             self.cache.popitem()  # Eliminar entrada más antigua
             
-        context_key = self._context_to_key(context)
-        self.cache[word.lower()][context_key] = replacement
-        self.save_cache()
+        clave_contexto = self._clave_contexto(contexto)
+        self.cache[palabra.lower()][clave_contexto] = reemplazo
+        self.guardar_cache()
     
-    def _context_to_key(self, context):
-        return "|".join(context)
+    def _clave_contexto(self, contexto):
+        return "|".join(contexto)
 
 # Inicializar cache
-word_cache = WordCache()
+cache_palabras = CachePalabras()
 
-def limpiar_texto(text):
-    """Elimina espacios innecesarios y normaliza caracteres especiales."""
-    text = text.replace("\n", " ").replace("\r", " ")
-    text = " ".join(text.split())  # Eliminar espacios extras
-    text = ''.join(c for c in unicodedata.normalize('NFKD', text) if unicodedata.category(c) != 'Mn')
-    return text
+def limpiar_texto(texto):
+    """Limpia el texto de espacios innecesarios y normaliza caracteres especiales."""
+    texto = texto.replace("\n", " ").replace("\r", " ")
+    texto = " ".join(texto.split())
+    texto = ''.join(c for c in unicodedata.normalize('NFKD', texto) if unicodedata.category(c) != 'Mn')
+    return texto
 
-def corregir_ortografia(text):
-    """
-    Corrige la ortografía basándose en el corpus de palabras correctas, 
-    exceptuando verbos para no alterar su conjugación.
-    """
-    doc = nlp(text)
-    corrected_tokens = []
+def corregir_ortografia(texto):
+    """Corrige la ortografía basándose en un corpus de palabras correctas."""
+    doc = nlp(texto)
+    palabras_corregidas = []
     
     for i, token in enumerate(doc):
-        # Si es verbo, dejarlo intacto
         if token.pos_ == "VERB":
-            corrected_tokens.append(token.text)
+            palabras_corregidas.append(token.text)
             continue
         
-        word = token.text
-        # Si la palabra ya es correcta, se deja igual
-        if word.lower() in correct_words:
-            corrected_tokens.append(word)
+        palabra = token.text
+        if palabra.lower() in palabras_correctas:
+            palabras_corregidas.append(palabra)
         else:
-            # Buscar en cache primero
-            context = [doc[j].text for j in range(max(0, i-1), min(len(doc), i+2))]
-            cached = word_cache.get(word, context)
-            if cached:
-                corrected_tokens.append(cached)
+            contexto = [doc[j].text for j in range(max(0, i-1), min(len(doc), i+2))]
+            cacheada = cache_palabras.obtener(palabra, contexto)
+            if cacheada:
+                palabras_corregidas.append(cacheada)
                 continue
                 
-            # Encontrar el mejor match
-            closest_match = min(correct_words, key=lambda w: edit_distance(w, word.lower()))
-            dist = edit_distance(closest_match, word.lower())
+            mejor_match = min(palabras_correctas, key=lambda w: edit_distance(w, palabra.lower()))
+            distancia = edit_distance(mejor_match, palabra.lower())
             
-            # Solo corregir si la distancia es pequeña y no parece un nombre propio
-            if dist <= 2 and not (word[0].isupper() and i > 0):
-                corrected_tokens.append(closest_match)
-                word_cache.set(word, context, closest_match)
+            if distancia <= 2:
+                palabras_corregidas.append(mejor_match)
+                cache_palabras.establecer(palabra, contexto, mejor_match)
             else:
-                corrected_tokens.append(word)
+                palabras_corregidas.append(palabra)
                 
-    return " ".join(corrected_tokens)
-
-def get_context_words(doc, index, window_size=CONTEXT_WINDOW):
-    """Obtiene palabras de contexto alrededor de un índice dado."""
-    start = max(0, index - window_size)
-    end = min(len(doc), index + window_size + 1)
-    return [doc[i].text.lower() for i in range(start, end) if i != index and not doc[i].is_punct]
-
-def get_formal_synonym(word, token, context_words):
-    """Sustituye palabras por sinónimos más formales considerando el contexto."""
-    # Verificar cache primero
-    cached = word_cache.get(word, context_words)
-    if cached:
-        return cached
-    
-    # No modificar ciertas palabras
-    if (word.lower() in protected_terms or 
-        token.is_punct or 
-        token.is_space or 
-        (token.pos_ == "VERB" and "Tense" in token.morph)):
-        return word
-    
-    # Verificar reemplazos predefinidos con contexto
-    if word.lower() in formal_replacements:
-        replacement_data = formal_replacements[word.lower()]
-        for ctx_word in context_words:
-            if ctx_word in replacement_data["contexts"]:
-                replacement = replacement_data["contexts"][ctx_word]
-                word_cache.set(word, context_words, replacement)
-                return replacement
-        replacement = replacement_data["default"]
-        word_cache.set(word, context_words, replacement)
-        return replacement
-    
-    # Buscar sinónimos formales para sustantivos y adjetivos
-    if token.pos_ in ["NOUN", "ADJ"]:
-        synonyms = set()
-        for syn in wordnet.synsets(word, lang='spa'):
-            for lemma in syn.lemmas('spa'):
-                lemma_name = lemma.name().replace('_', ' ')
-                if (lemma_name != word and 
-                    lemma_name in correct_words and 
-                    len(lemma_name.split()) == 1):
-                    synonyms.add(lemma_name)
-        
-        # Seleccionar el sinónimo más largo (generalmente más formal)
-        if synonyms:
-            replacement = max(synonyms, key=lambda x: (len(x), x))
-            word_cache.set(word, context_words, replacement)
-            return replacement
-    
-    return word
-
-def mejorar_texto(text):
-    """Mejora el texto cambiando palabras para que suenen más formales y ajustando la concordancia de género."""
-    doc = nlp(text)
-    improved_words = []
-    
-    for i, token in enumerate(doc):
-        context_words = get_context_words(doc, i)
-        improved_word = get_formal_synonym(token.text, token, context_words)
-        
-        # Si el token es un sustantivo y se reemplazó por un sinónimo, verificar el artículo anterior
-        if token.pos_ == "NOUN" and improved_word.lower() != token.text.lower():
-            if i > 0:
-                prev_token = doc[i-1]
-                # Comprobar si el token anterior es un determinante que requiere ajuste
-                if prev_token.pos_ == "DET" and prev_token.text.lower() in {"el", "un", "este", "ese", "aquel"}:
-                    improved_noun_doc = nlp(improved_word)
-                    if improved_noun_doc and improved_noun_doc[0].morph.get("Gender"):
-                        gender = improved_noun_doc[0].morph.get("Gender")
-                        if "Fem" in gender:
-                            mapping = {"el": "la", "un": "una", "este": "esta", "ese": "esa", "aquel": "aquella"}
-                            if improved_words:
-                                prev_word = improved_words[-1]
-                                lower_prev = prev_word.lower()
-                                if lower_prev in mapping:
-                                    new_article = mapping[lower_prev]
-                                    if prev_word[0].isupper():
-                                        new_article = new_article.capitalize()
-                                    improved_words[-1] = new_article
-        improved_words.append(improved_word)
-    
-    smoothed_text = suavizar_texto(" ".join(improved_words))
-    return smoothed_text
-
-def suavizar_texto(text):
-    """Aplica técnicas de suavizado para hacer el texto más natural."""
-    doc = nlp(text)
-    smoothed_words = []
-    
-    for i, token in enumerate(doc):
-        current_word = token.text
-        if i > 0 and current_word.lower() == doc[i-1].text.lower():
-            continue
-        smoothed_words.append(current_word)
-    
-    smoothed_text = " ".join(smoothed_words)
-    smoothed_text = smoothed_text.replace(" a el ", " al ").replace(" de el ", " del ")
-    return smoothed_text
+    return " ".join(palabras_corregidas)
 
 def procesar_texto():
-    text = texto_entrada.get("1.0", tk.END)
-    if text.strip():
-        text = limpiar_texto(text)
-        text = corregir_ortografia(text)
-        text = mejorar_texto(text)
-        texto_salida.delete("1.0", tk.END)
-        texto_salida.insert(tk.END, text)
+    texto = entrada_texto.get("1.0", tk.END)
+    if texto.strip():
+        texto = limpiar_texto(texto)
+        texto = corregir_ortografia(texto)
+        salida_texto.delete("1.0", tk.END)
+        salida_texto.insert(tk.END, texto)
 
 def cargar_pdf():
-    file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
-    if file_path:
-        with open(file_path, "rb") as file:
-            reader = PyPDF2.PdfReader(file)
-            text = " ".join(page.extract_text() or "" for page in reader.pages[:20])
-            texto_entrada.delete("1.0", tk.END)
-            texto_entrada.insert(tk.END, text)
+    ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos PDF", "*.pdf")])
+    if ruta_archivo:
+        with open(ruta_archivo, "rb") as archivo:
+            lector = PyPDF2.PdfReader(archivo)
+            texto = " ".join(pagina.extract_text() or "" for pagina in lector.pages[:20])
+            entrada_texto.delete("1.0", tk.END)
+            entrada_texto.insert(tk.END, texto)
 
 # Interfaz gráfica
-root = tk.Tk()
-root.title("Mejorador de Texto Formal Avanzado")
+ventana = tk.Tk()
+ventana.title("Mejorador de Texto Formal")
 
-frame = tk.Frame(root)
+frame = tk.Frame(ventana)
 frame.pack(pady=10)
 
 tk.Label(frame, text="Texto original:").pack()
-texto_entrada = tk.Text(frame, wrap=tk.WORD, width=80, height=15)
-texto_entrada.pack()
+entrada_texto = tk.Text(frame, wrap=tk.WORD, width=80, height=15)
+entrada_texto.pack()
 
-btn_frame = tk.Frame(root)
-btn_frame.pack(pady=5)
+botones_frame = tk.Frame(ventana)
+botones_frame.pack(pady=5)
 
-tk.Button(btn_frame, text="Cargar PDF", command=cargar_pdf).pack(side=tk.LEFT, padx=5)
-tk.Button(btn_frame, text="Mejorar Texto", command=procesar_texto).pack(side=tk.LEFT, padx=5)
+tk.Button(botones_frame, text="Cargar PDF", command=cargar_pdf).pack(side=tk.LEFT, padx=5)
+tk.Button(botones_frame, text="Mejorar Texto", command=procesar_texto).pack(side=tk.LEFT, padx=5)
 
-tk.Label(root, text="Texto mejorado:").pack()
-texto_salida = tk.Text(root, wrap=tk.WORD, width=80, height=15)
-texto_salida.pack()
+tk.Label(ventana, text="Texto mejorado:").pack()
+salida_texto = tk.Text(ventana, wrap=tk.WORD, width=80, height=15)
+salida_texto.pack()
 
-root.mainloop()
+ventana.mainloop()
