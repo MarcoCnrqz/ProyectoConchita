@@ -184,6 +184,9 @@ sinonimos_por_modo = {
     "Muy formal": sinonimos_muy_formal
 }
 
+# ------------------------------------------------------------------------
+# CLASE DE CACHÉ
+# ------------------------------------------------------------------------
 class CachePalabras:
     def __init__(self, archivo_cache=ARCHIVO_CACHE):
         self.archivo_cache = archivo_cache
@@ -224,39 +227,19 @@ cache_palabras = CachePalabras()
 # FUNCIONES DE PROCESO (LÍNEA POR LÍNEA)
 # ------------------------------------------------------------------------
 
-def limpiar_texto(texto):
-    """Conserva saltos de línea, elimina tildes, pero no quita puntuación ni dígitos."""
-    # Eliminamos \r y normalizamos acentos
-    texto = texto.replace("\r", "")
-    return ''.join(
-        c for c in unicodedata.normalize('NFKD', texto)
-        if unicodedata.category(c) != 'Mn'
-    )
-
 def corregir_ortografia_en_linea(line):
     """
     Corrige ortografía de una sola línea de texto.
-    Ignora:
-      - verbos
-      - stopwords
-      - tokens que NO sean alfabéticos (p. ej. puntuación, números, símbolos).
-    Retorna una LISTA de dict con {'texto_original','texto_corregido'}.
+    Retorna una LISTA de dict con {'texto_original','texto_corregido'} 
+    para cada token.
     """
     doc = nlp(line)
     tokens_info = []
 
     for i, token in enumerate(doc):
         palabra_original = token.text
-
-        # 1) Si NO es alfabético (puntuación, números, etc.), NO lo tocamos
-        if not token.is_alpha:
-            tokens_info.append({
-                'texto_original': palabra_original,
-                'texto_corregido': palabra_original
-            })
-            continue
-
-        # 2) No corregimos verbos ni stopwords
+        
+        # No corregimos verbos ni stopwords
         if token.pos_ == "VERB" or palabra_original.lower() in palabras_vacias:
             tokens_info.append({
                 'texto_original': palabra_original,
@@ -264,7 +247,7 @@ def corregir_ortografia_en_linea(line):
             })
             continue
 
-        # 3) Si ya está en el corpus, se toma como correcta
+        # Si ya está en el corpus, se toma como correcta
         if palabra_original.lower() in palabras_correctas:
             tokens_info.append({
                 'texto_original': palabra_original,
@@ -272,7 +255,7 @@ def corregir_ortografia_en_linea(line):
             })
             continue
 
-        # 4) Revisar caché (usamos 2 palabras antes y 2 después)
+        # Revisar caché (usamos 2 palabras antes y 2 después)
         inicio = max(0, i - 2)
         fin = min(len(doc), i + 3)
         contexto = [doc[j].text for j in range(inicio, fin)]
@@ -285,7 +268,7 @@ def corregir_ortografia_en_linea(line):
             })
             continue
 
-        # 5) Calcular la palabra más cercana
+        # Hallar la palabra más cercana
         mejor_match = min(
             palabras_correctas,
             key=lambda w: edit_distance(w, palabra_original.lower())
@@ -308,8 +291,8 @@ def corregir_ortografia_en_linea(line):
 
 def aplicar_reemplazos_formales_en_linea(tokens_info):
     """
-    Aplica reemplazos formales con contexto.
-    Retorna una lista de strings.
+    Aplica reemplazos formales con contexto a una lista de tokens (dict).
+    Retorna una lista de strings (cada token corregido o reemplazado).
     """
     line_out = []
     length = len(tokens_info)
@@ -325,6 +308,8 @@ def aplicar_reemplazos_formales_en_linea(tokens_info):
         if orig.lower() in reemplazos_formales:
             info = reemplazos_formales[orig.lower()]
             reemplazo_final = info["default"]
+            
+            # Buscamos si hay contexto que active un reemplazo distinto
             for clave_contextual, reemplazo_especifico in info["contextos"].items():
                 if clave_contextual.lower() in palabras_alrededor:
                     reemplazo_final = reemplazo_especifico
@@ -337,8 +322,9 @@ def aplicar_reemplazos_formales_en_linea(tokens_info):
 
 def sinonimizar_por_modo_en_linea(line_text, modo):
     """
-    Aplica sinónimos según el modo, basándose en la LEMA.
-    Ignora tokens que no sean VERB, NOUN, ADJ, ADV.
+    Aplica sinónimos según el modo. 
+    line_text: string a procesar.
+    modo: "Muy informal", "Informal", "Formal", "Muy formal"
     """
     sinonimos_dict = sinonimos_por_modo.get(modo, {})
     doc = nlp(line_text)
@@ -356,52 +342,63 @@ def sinonimizar_por_modo_en_linea(line_text, modo):
 
 def procesar_linea(line, modo):
     """
-    Procesa UNA línea completa respetando la estructura:
-      - Corrección ortográfica
-      - (opc) Reemplazos formales si modo es Formal o Muy formal
-      - Sinonimización por modo
+    Procesa UNA línea completa respetando la estructura.
+    - Corrige ortografía 
+    - (Opcional) Aplica reemplazos formales si modo es "Formal" o "Muy formal"
+    - Aplica sinónimos basados en la lema
+    Retorna la línea transformada (string).
     """
+    # Si la línea está vacía o solo espacios, la dejamos tal cual (p. ej. salto de línea)
     if not line.strip():
-        return line  # Línea vacía: no procesar
+        return line
 
+    # 1) Corrige ortografía
     tokens_corregidos = corregir_ortografia_en_linea(line)
 
+    # 2) Si modo es Formal o Muy formal, aplicar reemplazos formales
     if modo in ["Formal", "Muy formal"]:
         tokens_reemplazados = aplicar_reemplazos_formales_en_linea(tokens_corregidos)
     else:
+        # Tomamos solo la palabra corregida (sin replacements formales)
         tokens_reemplazados = [t['texto_corregido'] for t in tokens_corregidos]
 
+    # 3) Volver a formar un string
     texto_intermedio = " ".join(tokens_reemplazados)
+
+    # 4) Sinonimizar según modo
     texto_final = sinonimizar_por_modo_en_linea(texto_intermedio, modo)
+
     return texto_final
 
+# ------------------------------------------------------------------------
+# FUNCIONES DE TKINTER
+# ------------------------------------------------------------------------
+
 def procesar_texto():
-    """
-    Lee el texto del cuadro de entrada, lo 'limpia' (sin quitar signos),
-    luego lo divide en líneas y procesa cada línea por separado, 
-    conservando el formato original.
-    """
+    """Procesa TODO el texto en el cuadro de entrada, línea por línea, 
+    conservando saltos de línea."""
     modo = modo_var.get()
     texto_entrada = entrada_texto.get("1.0", tk.END)
-    # Limpiamos acentos pero NO tocamos puntuaciones ni dígitos
-    texto_entrada_limpio = limpiar_texto(texto_entrada)
 
-    # Divide en líneas
-    lineas = texto_entrada_limpio.splitlines(keepends=False)
+    # Dividir en líneas sin perder la estructura
+    lineas = texto_entrada.splitlines(keepends=False)
     lineas_salida = []
 
     for line in lineas:
+        # Procesar la línea
         nueva_linea = procesar_linea(line, modo)
         lineas_salida.append(nueva_linea)
 
+    # Reconstruir con saltos de línea
     texto_salida_final = "\n".join(lineas_salida)
+
     salida_texto.delete("1.0", tk.END)
     salida_texto.insert(tk.END, texto_salida_final)
 
 def cargar_pdf():
     """
-    Carga un PDF y coloca su contenido en el cuadro de entrada,
-    conservando saltos de línea entre páginas.
+    Carga un archivo PDF y coloca su contenido (respetando saltos de página
+    como saltos de línea) en el cuadro de entrada.
     """
     ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos PDF", "*.pdf")])
     if not ruta_archivo:
@@ -425,9 +422,12 @@ def cargar_pdf():
             texto_cargado = []
             for i in range(paginas_a_leer):
                 page_text = lector.pages[i].extract_text() or ""
+                # Separar por líneas para simular "saltos de línea" del PDF
+                # PyPDF2 no siempre conserva muy bien el formato, pero al menos
+                # tendremos líneas separadas.
                 texto_cargado.append(page_text)
 
-            # Doble salto para separar páginas
+            # Unir con un doble salto de línea para simular
             texto_final = "\n\n".join(texto_cargado)
 
             entrada_texto.delete("1.0", tk.END)
@@ -437,11 +437,13 @@ def cargar_pdf():
         messagebox.showerror("Error al leer PDF", str(e))
 
 # ------------------------------------------------------------------------
-# INTERFAZ GRÁFICA
+# CREACIÓN DE INTERFAZ GRÁFICA
 # ------------------------------------------------------------------------
-ventana = tk.Tk()
-ventana.title("Transformador de Texto - Respetando Formato y Puntuación")
 
+ventana = tk.Tk()
+ventana.title("Transformador de Texto - Conservando Formato")
+
+# Cuadro de texto de ENTRADA
 frame_entrada = tk.Frame(ventana)
 frame_entrada.pack(pady=5)
 
@@ -449,16 +451,19 @@ tk.Label(frame_entrada, text="Texto original (con saltos de línea):").pack(anch
 entrada_texto = tk.Text(frame_entrada, wrap=tk.WORD, width=80, height=12)
 entrada_texto.pack()
 
+# Selección de modo
 frame_modo = tk.Frame(ventana)
 frame_modo.pack(pady=5)
 
 modo_var = tk.StringVar(value="Muy informal")
+
 tk.Label(frame_modo, text="Modo de transformación:").pack(anchor='w')
 modos = ["Muy informal", "Informal", "Formal", "Muy formal"]
 for m in modos:
     rb = tk.Radiobutton(frame_modo, text=m, variable=modo_var, value=m)
     rb.pack(side=tk.LEFT, padx=5)
 
+# Botones y entrada páginas PDF
 frame_botones = tk.Frame(ventana)
 frame_botones.pack(pady=5)
 
@@ -470,13 +475,14 @@ pages_entry.pack(side=tk.LEFT, padx=5)
 btn_pdf = tk.Button(frame_botones, text="Cargar PDF", command=cargar_pdf)
 btn_pdf.pack(side=tk.LEFT, padx=5)
 
-btn_mejorar = tk.Button(frame_botones, text="Transformar Texto", command=procesar_texto)
-btn_mejorar.pack(side=tk.LEFT, padx=5)
+btn_transformar = tk.Button(frame_botones, text="Transformar Texto", command=procesar_texto)
+btn_transformar.pack(side=tk.LEFT, padx=5)
 
+# Cuadro de texto de SALIDA
 frame_salida = tk.Frame(ventana)
 frame_salida.pack(pady=5)
 
-tk.Label(frame_salida, text="Texto transformado (se conserva formato y puntuación):").pack(anchor='w')
+tk.Label(frame_salida, text="Texto transformado (se conserva formato):").pack(anchor='w')
 salida_texto = tk.Text(frame_salida, wrap=tk.WORD, width=80, height=12)
 salida_texto.pack()
 
