@@ -1,0 +1,183 @@
+{
+  "queria": {
+    "El|chico|queria|hacer|algo": "quería",
+    "la|chica|queria|hacer|presentaciones": "quería"
+  },
+  ".": {
+    "muy|grande|.": "s",
+    "sus|amigos|.|A|menudo": "s",
+    "que|aprendia|.|Sin|embargo": "s",
+    "las|tareas|.|Texto|2": "s",
+    "colegio|privado|.|Su|objetivo": "s",
+    "cada|exposicion|.|Ella|pensaba": "s",
+    "vida|academica|.|Aun|asi": "s",
+    "de|conducta|.|Texto|3": "s",
+    "escuela|educativa|.|Alli|ver": "s",
+    "querian|hacer|.|Su|profesor": "s",
+    "sus|metas|.|A|veces": "s",
+    "de|intentarlo|.|Texto|4": "s",
+    "de|oportunidades|.|El|chico": "s",
+    "mas|solidas|.|Ambos|consideraban": "s",
+    "los|docentes|.|Un|dia": "s",
+    "mucho|mas|.|Texto|5": "s",
+    "de|negocios|.|Juntos|,": "s",
+    "o|temprano|.|Aunque|a": "s",
+    "la|vida|.": "s",
+    "sus|amigos|.|A": "k",
+    "aprendía|.|Sin|embargo": "k",
+    "las|tareas|.| ": "k",
+    "cada|exposición|.|Ella|pensaba": "k",
+    "vida|académica|.|Aun|así": "k",
+    "de|conducta|.| ": "k",
+    "escuela|educativa|.|Allí|ver": "k",
+    "hacer|.|Su|profesor": "k",
+    "de|intentarlo|.| ": "k",
+    "de|oportunidades|.|El": "k",
+    "más|sólidas|.|Ambos|consideraban": "k",
+    "los|docentes|.|Un|día": "k",
+    "mucho|más|.| ": "k",
+    "la|vida|.| ": "k"
+  },
+  "1": {
+    "Texto|1|El|chico": "s",
+    "Texto|1| ": "k"
+  },
+  "menudo": {
+    ".|A|menudo|,|iba": "menuda",
+    "menudo|,|iba": "menudos"
+  },
+  ",": {
+    "A|menudo|,|iba|a": "s",
+    "Sin|embargo|,|a|veces": "s",
+    "La|chica|,|que|tambien": "s",
+    "era|mujer|,|estudiaba|en": "s",
+    "Aun|asi|,|un|dia": "s",
+    "estaban|juntos|,|iban|a": "s",
+    "resultaba|feliz|,|y|les": "s",
+    "estudiar|poco|,|sino|que": "s",
+    "sentian|bueno|,|a|veces": "s",
+    "veces|malo|,|pero|nunca": "s",
+    "habilidades|crecian|,|mientras|la": "s",
+    "consideraban|que|,|aunque|el": "s",
+    "recursos|tecnologicos|,|resultaba|bueno": "s",
+    "Un|dia|,|decidieron|trabajar": "s",
+    "feria|cientifica|,|y|asi": "s",
+    "de|todo|,|la|chica": "s",
+    "la|ciudad|,|mientras|que": "s",
+    ".|Juntos|,|querian|decir": "s",
+    "problema|malo|,|siempre|encontraban": "s",
+    "menudo|,|iba|a": "k",
+    "La|chica|,|que|también": "k",
+    "Aun|así|,|un|día": "k",
+    "sentían|bueno|,|a|veces": "k",
+    "veces|malo|,|pero": "k",
+    "habilidades|crecían|,|mientras|la": "k",
+    "recursos|tecnológicos|,|resultaba|bueno": "k",
+    "Un|día|,": "k",
+    "feria|científica|,|y|así": "k",
+    ".|Juntos|,|querían|decir": "k",
+    "problema|malo|,": "k"
+  },
+  "alli": {
+    "escuela|porque|alli|podia|ver": "allá",
+    "educativa|.|Alli|ver|a": "allá"
+  },
+  "rapido": {
+    "podia|trabajar|rapido|para|terminar": "rápido",
+    "un|proyecto|rapido|para|una": "rápido"
+  },
+  "2": {
+    ".|Texto|2|La|chica": "s",
+    "Texto|2| ": "k"
+  },
+  "tambien": {
+    ",|que|tambien|era|mujer": "también"
+  },
+  "exposicion": {
+    "en|cada|exposicion|.|Ella": "exposición"
+  },
+  "academica": {
+    "su|vida|academica|.|Aun": "académico"
+  },
+  "asi": {
+    ".|Aun|asi|,|un": "casi",
+    ",|y|asi|demostrarse|que": "casi"
+  },
+  "dia": {
+    ",|un|dia|se|sintio": "cia",
+    ".|Un|dia|,|decidieron": "cia"
+  },
+  "considero": {
+    "amigas|la|considero|malo|en": "consideró"
+  },
+  "3": {
+    ".|Texto|3|Siempre|que": "s",
+    "Texto|3| ": "k"
+  },
+  "companeros": {
+    "a|sus|companeros|les|resultaba": "compañeros"
+  },
+  "4": {
+    ".|Texto|4|El|colegio": "s",
+    "Texto|4| ": "k"
+  },
+  "habilidades": {
+    "como|sus|habilidades|crecian|,": "habilidad",
+    "cómo|sus|habilidades|crecían|,": "facilidades"
+  },
+  "solidas": {
+    "presentaciones|mas|solidas|.|Ambos": "salidas"
+  },
+  "tecnologicos": {
+    "en|recursos|tecnologicos|,|resultaba": "tecnológicos"
+  },
+  "docentes": {
+    "de|los|docentes|.|Un": "decente"
+  },
+  "cientifica": {
+    "una|feria|cientifica|,|y": "científica"
+  },
+  "5": {
+    ".|Texto|5|A|pesar": "s",
+    "Texto|5| ": "k"
+  },
+  "suenos": {
+    "olvido|sus|suenos|de|estudiar": "sueños"
+  },
+  "querian": {
+    "Juntos|,|querian|decir|al": "querían"
+  },
+  "cion": {
+    "y|dedica|cion|se|puede": "cien"
+  },
+  "exito": {
+    "ver|el|exito|tarde|o": "éxito"
+  },
+  "aparecia": {
+    "a|veces|aparecia|algun|problema": "apareció"
+  },
+  " ": {
+    "Texto|1| ": "k",
+    "tareas|.| ": "k",
+    "Texto|2| ": "k",
+    "conducta|.| ": "k",
+    "Texto|3| ": "k",
+    "intentarlo|.| ": "k",
+    "Texto|4| ": "k",
+    "colegio|privado| |donde|se": "k",
+    "chico|deseaba| |ver|cómo": "k",
+    "decidieron| |trabajar|juntos": "k",
+    "más|.| ": "k",
+    "Texto|5| ": "k",
+    "vida|.| ": "k"
+  },
+  "académica": {
+    "su|vida|académica|.|Aun": "académico"
+  },
+  "sólidas": {
+    "presentaciones|más|sólidas|.|Ambos": "sólidos"
+  },
+  "ción": {
+    "y|dedica|ción|se": "cien"
+  }
+}

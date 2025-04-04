@@ -15,13 +15,7 @@ nltk.download('cess_esp')
 nltk.download('stopwords')
 nltk.download('wordnet')
 
-# ======================================================
-# 1) Cargar el modelo spaCy COMPLETO (es_core_news_sm)
-#    para asegurar que el lematizador funcione.
-# ======================================================
 try:
-    # OJO: no deshabilitamos "attribute_ruler" ni "lemmatizer"
-    # para que la lematización en español funcione correctamente
     nlp = spacy.load("es_core_news_sm")
 except OSError:
     messagebox.showerror(
@@ -32,22 +26,20 @@ except OSError:
     raise
 
 # ------------------------------------------------------------------------
-# CONFIGURACIÓN Y ESTRUCTURAS DE DATOS
+# CONFIGURACIONES GLOBALES
 # ------------------------------------------------------------------------
-
 ARCHIVO_CACHE = "cache_palabras.json"
 MAX_TAMANO_CACHE = 10000
 
-# Palabras correctas (tomadas del corpus cess_esp)
+# Corpus de palabras correctas (cess_esp)
 palabras_correctas = set(
     palabra.lower() for palabra in cess_esp.words() if palabra.isalpha()
 )
 
-# Stopwords (palabras vacías)
+# Stopwords
 palabras_vacias = set(stopwords.words('spanish'))
 
-# Diccionario de reemplazos formales con contexto
-# Se aplica DESPUÉS de la corrección ortográfica.
+# DICCIONARIO DE REEMPLAZOS FORMALES (se aplican en modo Formal y Muy formal)
 reemplazos_formales = {
     "escuela": {
         "default": "institución",
@@ -67,7 +59,7 @@ reemplazos_formales = {
     },
     "bueno": {
         "default": "adecuado",
-        "contextos": {"muy": "excelente", "sumamente": "magnífico"}
+        "contextos": {"muy": "excelente"}
     },
     "malo": {
         "default": "inadecuado",
@@ -75,35 +67,127 @@ reemplazos_formales = {
     }
 }
 
-# Diccionario adicional de SINÓNIMOS “más formales” usando la LEMA
-# Se aplica en la última fase del pipeline.
-sinonimos_formales = {
-    "computadora": "ordenador",
-    "hacer": "realizar",
-    "decir": "manifestar",
-    "ver": "observar",
-    "dar": "proporcionar",
-    "tener": "poseer",
-    "usar": "utilizar",
-    "querer": "desear",
-    "necesitar": "requerir",
-    "ir": "acudir",
-    "estar": "hallarse",  # Ejemplo, "estaba" -> "se hallaba"
-    "ser": "constituir",
-    "grande": "magnánimo",
-    "pequeño": "reducido",
-    "rápido": "veloz",
-    "lento": "pausado",
+# DICCIONARIOS DE SINÓNIMOS POR MODO (basado en la LEMA)
+sinonimos_muy_informal = {
+    # verbos
+    "hacer": "chambear",   # Ej: "hacer" -> "chambear"
+    "decir": "contar",
+    "ver": "wachar",
+    "querer": "querer",    # lo dejamos igual
+    "tener": "tener",      # lo dejamos igual para el ejemplo
+    "ser": "ser",
+    "estar": "estar",
+    # adjetivos / adverbios
+    "grande": "grandote",
+    "pequeño": "chiquito",
+    "bueno": "chido",
+    "malo": "gacho",
+    "rápido": "de volada",
+    "lento": "despacito",      # sin cambio
+    "mucho": "un montón",
+    "poco": "poquito",
     "feliz": "contento",
-    "triste": "afligido",
-    "fuerte": "vigoroso",
-    "débil": "frágil",
-    "mucho": "abundantemente",
-    "poco": "escasamente"
+    "triste": "agüitado",
+    "chico": "morrillo",
+    "verdad": "alch",
+    "colegio": "el reclusorio de la mente",
+    "escuela": "el reclusorio de la mente",
+    "policia": "la chota",
+    "trabajo": "el jale",
+    "casa": "canton"
 }
 
+# Modo "Informal"
+sinonimos_informal = {
+    # verbos
+    "hacer": "realizar",   # un poco más “normal”
+    "decir": "decir",
+    "ver": "ver",
+    "querer": "querer",
+    "tener": "tener",
+    "ser": "ser",
+    "estar": "estar",
+    # adjetivos / adverbios
+    "grande": "bastante grande",
+    "pequeño": "pequeñito",
+    "bueno": "bueno",
+    "malo": "malo",
+    "rápido": "rápido",
+    "lento": "lento",
+    "mucho": "mucho",
+    "poco": "poco",
+    "feliz": "contento",
+    "triste": "triste",
+    "chico": "chavo",
+    "verdad": "neta",
+    "colegio": "escuelita",
+    "escuela": "escuelita",
+    "casa": "mi cueva"
+}
+
+# Modo "Formal"
+sinonimos_formal = {
+    # verbos
+    "hacer": "realizar",
+    "decir": "expresar",
+    "ver": "observar",
+    "querer": "desear",
+    "tener": "poseer",
+    "ser": "ser",
+    "estar": "encontrarse",
+    # adjetivos / adverbios
+    "grande": "considerable",
+    "pequeño": "reducido",
+    "bueno": "adecuado",
+    "malo": "inadecuado",
+    "rápido": "ágil",
+    "lento": "pausado",
+    "mucho": "abundantemente",
+    "poco": "escasamente",
+    "feliz": "contento",
+    "triste": "afligido",
+    "chico": "joven",
+    "verdad": "verdad"
+}
+
+# Modo "Muy formal"
+sinonimos_muy_formal = {
+    # verbos
+    "hacer": "llevar a cabo",
+    "decir": "manifestar",
+    "ver": "contemplar",
+    "querer": "anhelar",
+    "tener": "poseer",
+    "ser": "constituir",
+    "estar": "hallarse",
+    # adjetivos / adverbios
+    "grande": "magnánimo",
+    "pequeño": "diminuto",
+    "bueno": "excelso",
+    "malo": "deficiente",
+    "rápido": "rápidamente",
+    "lento": "moroso",
+    "mucho": "profundamente",
+    "poco": "exiguamente",
+    "feliz": "dichoso",
+    "triste": "consternado",
+    "chico": "joven",
+    "verdad": "sinceramente",
+    "maestros": "docentes",
+    "trabajo": "laborar"
+}
+
+sinonimos_por_modo = {
+    "Muy informal": sinonimos_muy_informal,
+    "Informal": sinonimos_informal,
+    "Formal": sinonimos_formal,
+    "Muy formal": sinonimos_muy_formal
+}
+
+# ------------------------------------------------------------------------
+# CLASE DE CACHÉ
+# ------------------------------------------------------------------------
 class CachePalabras:
-    """Cache para almacenar palabras procesadas y sus reemplazos óptimos."""
     def __init__(self, archivo_cache=ARCHIVO_CACHE):
         self.archivo_cache = archivo_cache
         self.cache = defaultdict(dict)
@@ -129,109 +213,32 @@ class CachePalabras:
     
     def establecer(self, palabra, contexto, reemplazo):
         if len(self.cache) > MAX_TAMANO_CACHE:
-            self.cache.popitem()  # Elimina un ítem (en dicts 3.7+ es FIFO)
-            
+            self.cache.popitem()
         clave_contexto = self._clave_contexto(contexto)
         self.cache[palabra.lower()][clave_contexto] = reemplazo
         self.guardar_cache()
     
     def _clave_contexto(self, contexto):
-        # Convierte la lista de palabras de contexto en una cadena única
         return "|".join(contexto)
 
 cache_palabras = CachePalabras()
 
 # ------------------------------------------------------------------------
-# FUNCIONES PRINCIPALES
+# FUNCIONES DE PROCESO (LÍNEA POR LÍNEA)
 # ------------------------------------------------------------------------
 
-def limpiar_texto(texto):
-    """Limpia saltos de línea, espacios múltiples y elimina tildes."""
-    texto = texto.replace("\n", " ").replace("\r", " ")
-    texto = " ".join(texto.split())
-    # Eliminar acentos
-    texto = ''.join(
-        c for c in unicodedata.normalize('NFKD', texto)
-        if unicodedata.category(c) != 'Mn'
-    )
-    return texto
-
-def aplicar_reemplazos_formales(tokens):
+def corregir_ortografia_en_linea(line):
     """
-    Aplica el diccionario 'reemplazos_formales' para cada palabra,
-    revisando 2 palabras antes y 2 después para ver si hay contextos clave.
-    tokens: lista de dict con 'texto_original' y 'texto_corregido'.
-    Retorna una lista de strings (texto final, token por token).
+    Corrige ortografía de una sola línea de texto.
+    Retorna una LISTA de dict con {'texto_original','texto_corregido'} 
+    para cada token.
     """
-    tokens_modificados = []
-    length = len(tokens)
-
-    for i, token in enumerate(tokens):
-        palabra_original = token['texto_original']
-        palabra_corregida = token['texto_corregido']
-
-        # Extraemos una ventana de 2 palabras antes y 2 después
-        inicio = max(0, i - 2)
-        fin = min(length, i + 3)
-        palabras_alrededor = [t['texto_original'].lower() for t in tokens[inicio:fin]]
-
-        # Si la palabra original está en el diccionario de reemplazos formales
-        if palabra_original.lower() in reemplazos_formales:
-            info = reemplazos_formales[palabra_original.lower()]
-            reemplazo_final = info["default"]  # valor por defecto
-
-            # Buscar si hay un contexto específico
-            for clave_contextual, reemplazo_especifico in info["contextos"].items():
-                if clave_contextual.lower() in palabras_alrededor:
-                    reemplazo_final = reemplazo_especifico
-                    break
-            tokens_modificados.append(reemplazo_final)
-        else:
-            # Si no hay reemplazo formal, usamos la palabra corregida
-            tokens_modificados.append(palabra_corregida)
-
-    return tokens_modificados
-
-def sinonimizar_formalmente(texto):
-    """
-    Recorre el texto final y reemplaza ciertos verbos, adjetivos, etc.
-    por sinónimos "más formales" usando un diccionario básico.
-    Se basa en la lematización en español de spaCy.
-    """
-    doc = nlp(texto)
-    resultado = []
-
-    for token in doc:
-        # Solo aplicamos sinónimos a verbos, sustantivos, adjetivos, adverbios
-        if token.pos_ in ["VERB", "NOUN", "ADJ", "ADV"]:
-            # lemma_ = forma base (en minúscula, con .lower())
-            lem = token.lemma_.lower()
-            if lem in sinonimos_formales:
-                # Reemplazamos por la palabra formal
-                # (No ajustamos género/número, es un acercamiento simple)
-                resultado.append(sinonimos_formales[lem])
-                continue
-        
-        # Si no hay reemplazo de sinónimo, conservamos el token original
-        resultado.append(token.text)
-
-    # Volver a unir en un string
-    return " ".join(resultado)
-
-def corregir_ortografia(texto):
-    """ 
-    Corrige ortografía basándose en un corpus (cess_esp).
-    Omite verbos y stopwords.
-    Devuelve una lista de dict con:
-       - 'texto_original'
-       - 'texto_corregido'
-    """
-    doc = nlp(texto)
+    doc = nlp(line)
     tokens_info = []
 
     for i, token in enumerate(doc):
         palabra_original = token.text
-
+        
         # No corregimos verbos ni stopwords
         if token.pos_ == "VERB" or palabra_original.lower() in palabras_vacias:
             tokens_info.append({
@@ -261,14 +268,13 @@ def corregir_ortografia(texto):
             })
             continue
 
-        # Si no está en el caché, calculamos la más cercana
+        # Hallar la palabra más cercana
         mejor_match = min(
             palabras_correctas,
             key=lambda w: edit_distance(w, palabra_original.lower())
         )
         distancia = edit_distance(mejor_match, palabra_original.lower())
 
-        # Si la distancia es pequeña, se asume corrección
         if distancia <= 2:
             tokens_info.append({
                 'texto_original': palabra_original,
@@ -276,7 +282,6 @@ def corregir_ortografia(texto):
             })
             cache_palabras.establecer(palabra_original, contexto, mejor_match)
         else:
-            # Dejar igual si no hay coincidencia razonable
             tokens_info.append({
                 'texto_original': palabra_original,
                 'texto_corregido': palabra_original
@@ -284,47 +289,121 @@ def corregir_ortografia(texto):
 
     return tokens_info
 
+def aplicar_reemplazos_formales_en_linea(tokens_info):
+    """
+    Aplica reemplazos formales con contexto a una lista de tokens (dict).
+    Retorna una lista de strings (cada token corregido o reemplazado).
+    """
+    line_out = []
+    length = len(tokens_info)
+
+    for i, token_dict in enumerate(tokens_info):
+        orig = token_dict['texto_original']
+        corr = token_dict['texto_corregido']
+
+        inicio = max(0, i - 2)
+        fin = min(length, i + 3)
+        palabras_alrededor = [t['texto_original'].lower() for t in tokens_info[inicio:fin]]
+
+        if orig.lower() in reemplazos_formales:
+            info = reemplazos_formales[orig.lower()]
+            reemplazo_final = info["default"]
+            
+            # Buscamos si hay contexto que active un reemplazo distinto
+            for clave_contextual, reemplazo_especifico in info["contextos"].items():
+                if clave_contextual.lower() in palabras_alrededor:
+                    reemplazo_final = reemplazo_especifico
+                    break
+            line_out.append(reemplazo_final)
+        else:
+            line_out.append(corr)
+
+    return line_out
+
+def sinonimizar_por_modo_en_linea(line_text, modo):
+    """
+    Aplica sinónimos según el modo. 
+    line_text: string a procesar.
+    modo: "Muy informal", "Informal", "Formal", "Muy formal"
+    """
+    sinonimos_dict = sinonimos_por_modo.get(modo, {})
+    doc = nlp(line_text)
+    resultado = []
+
+    for token in doc:
+        if token.pos_ in ["VERB", "NOUN", "ADJ", "ADV"]:
+            lem = token.lemma_.lower()
+            if lem in sinonimos_dict:
+                resultado.append(sinonimos_dict[lem])
+                continue
+        resultado.append(token.text)
+
+    return " ".join(resultado)
+
+def procesar_linea(line, modo):
+    """
+    Procesa UNA línea completa respetando la estructura.
+    - Corrige ortografía 
+    - (Opcional) Aplica reemplazos formales si modo es "Formal" o "Muy formal"
+    - Aplica sinónimos basados en la lema
+    Retorna la línea transformada (string).
+    """
+    # Si la línea está vacía o solo espacios, la dejamos tal cual (p. ej. salto de línea)
+    if not line.strip():
+        return line
+
+    # 1) Corrige ortografía
+    tokens_corregidos = corregir_ortografia_en_linea(line)
+
+    # 2) Si modo es Formal o Muy formal, aplicar reemplazos formales
+    if modo in ["Formal", "Muy formal"]:
+        tokens_reemplazados = aplicar_reemplazos_formales_en_linea(tokens_corregidos)
+    else:
+        # Tomamos solo la palabra corregida (sin replacements formales)
+        tokens_reemplazados = [t['texto_corregido'] for t in tokens_corregidos]
+
+    # 3) Volver a formar un string
+    texto_intermedio = " ".join(tokens_reemplazados)
+
+    # 4) Sinonimizar según modo
+    texto_final = sinonimizar_por_modo_en_linea(texto_intermedio, modo)
+
+    return texto_final
+
+# ------------------------------------------------------------------------
+# FUNCIONES DE TKINTER
+# ------------------------------------------------------------------------
+
 def procesar_texto():
-    """
-    Lee el texto de entrada, lo limpia, corrige ortografía,
-    aplica reemplazos formales con contexto y luego
-    realiza una sinonimización final para obtener un texto 'muy formal'.
-    Muestra el resultado en el cuadro de salida.
-    """
-    texto = entrada_texto.get("1.0", tk.END)
-    if not texto.strip():
-        messagebox.showwarning("Atención", "No hay texto para procesar.")
-        return
+    """Procesa TODO el texto en el cuadro de entrada, línea por línea, 
+    conservando saltos de línea."""
+    modo = modo_var.get()
+    texto_entrada = entrada_texto.get("1.0", tk.END)
 
-    # 1) Limpiar texto
-    texto_limpio = limpiar_texto(texto)
+    # Dividir en líneas sin perder la estructura
+    lineas = texto_entrada.splitlines(keepends=False)
+    lineas_salida = []
 
-    # 2) Corregir ortografía (devuelve info token a token)
-    tokens_corregidos = corregir_ortografia(texto_limpio)
+    for line in lineas:
+        # Procesar la línea
+        nueva_linea = procesar_linea(line, modo)
+        lineas_salida.append(nueva_linea)
 
-    # 3) Aplicar los reemplazos formales con contexto
-    tokens_con_reemplazos = aplicar_reemplazos_formales(tokens_corregidos)
+    # Reconstruir con saltos de línea
+    texto_salida_final = "\n".join(lineas_salida)
 
-    # 4) Volver a unir en un texto intermedio
-    texto_intermedio = " ".join(tokens_con_reemplazos)
-
-    # 5) Paso extra: sinonimización formal (usando lematizador)
-    texto_final = sinonimizar_formalmente(texto_intermedio)
-
-    # Mostrar en el texto de salida
     salida_texto.delete("1.0", tk.END)
-    salida_texto.insert(tk.END, texto_final)
+    salida_texto.insert(tk.END, texto_salida_final)
 
 def cargar_pdf():
     """
-    Carga un archivo PDF (tantas páginas como se indique)
-    y coloca el texto en el cuadro de entrada.
+    Carga un archivo PDF y coloca su contenido (respetando saltos de página
+    como saltos de línea) en el cuadro de entrada.
     """
     ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos PDF", "*.pdf")])
     if not ruta_archivo:
         return
 
-    # Intentar leer el número de páginas de la interfaz
     try:
         num_pag = int(pages_entry.get())
         if num_pag < 1:
@@ -336,58 +415,75 @@ def cargar_pdf():
         )
         num_pag = 20
 
-    # Leer el PDF
     try:
         with open(ruta_archivo, "rb") as archivo:
             lector = PyPDF2.PdfReader(archivo)
             paginas_a_leer = min(num_pag, len(lector.pages))
-            texto = []
+            texto_cargado = []
             for i in range(paginas_a_leer):
                 page_text = lector.pages[i].extract_text() or ""
-                texto.append(page_text)
-            texto_final = " ".join(texto)
+                # Separar por líneas para simular "saltos de línea" del PDF
+                # PyPDF2 no siempre conserva muy bien el formato, pero al menos
+                # tendremos líneas separadas.
+                texto_cargado.append(page_text)
+
+            # Unir con un doble salto de línea para simular
+            texto_final = "\n\n".join(texto_cargado)
 
             entrada_texto.delete("1.0", tk.END)
             entrada_texto.insert(tk.END, texto_final)
+
     except Exception as e:
         messagebox.showerror("Error al leer PDF", str(e))
 
 # ------------------------------------------------------------------------
-# CREACIÓN DE INTERFAZ GRÁFICA (tkinter)
+# CREACIÓN DE INTERFAZ GRÁFICA
 # ------------------------------------------------------------------------
 
 ventana = tk.Tk()
-ventana.title("Mejorador de Texto - Muy Formal")
+ventana.title("Transformador de Texto - Conservando Formato")
 
-# Frame para la entrada
+# Cuadro de texto de ENTRADA
 frame_entrada = tk.Frame(ventana)
 frame_entrada.pack(pady=5)
 
-tk.Label(frame_entrada, text="Texto original:").pack(anchor='w')
-entrada_texto = tk.Text(frame_entrada, wrap=tk.WORD, width=80, height=15)
+tk.Label(frame_entrada, text="Texto original (con saltos de línea):").pack(anchor='w')
+entrada_texto = tk.Text(frame_entrada, wrap=tk.WORD, width=80, height=12)
 entrada_texto.pack()
 
-# Frame para botones y entrada de páginas
+# Selección de modo
+frame_modo = tk.Frame(ventana)
+frame_modo.pack(pady=5)
+
+modo_var = tk.StringVar(value="Muy informal")
+
+tk.Label(frame_modo, text="Modo de transformación:").pack(anchor='w')
+modos = ["Muy informal", "Informal", "Formal", "Muy formal"]
+for m in modos:
+    rb = tk.Radiobutton(frame_modo, text=m, variable=modo_var, value=m)
+    rb.pack(side=tk.LEFT, padx=5)
+
+# Botones y entrada páginas PDF
 frame_botones = tk.Frame(ventana)
 frame_botones.pack(pady=5)
 
 tk.Label(frame_botones, text="Páginas a leer del PDF:").pack(side=tk.LEFT, padx=5)
 pages_entry = tk.Entry(frame_botones, width=5)
-pages_entry.insert(0, "20")  # valor por defecto
+pages_entry.insert(0, "2")
 pages_entry.pack(side=tk.LEFT, padx=5)
 
-btn_cargar_pdf = tk.Button(frame_botones, text="Cargar PDF", command=cargar_pdf)
-btn_cargar_pdf.pack(side=tk.LEFT, padx=5)
+btn_pdf = tk.Button(frame_botones, text="Cargar PDF", command=cargar_pdf)
+btn_pdf.pack(side=tk.LEFT, padx=5)
 
-btn_mejorar = tk.Button(frame_botones, text="Mejorar Texto", command=procesar_texto)
-btn_mejorar.pack(side=tk.LEFT, padx=5)
+btn_transformar = tk.Button(frame_botones, text="Transformar Texto", command=procesar_texto)
+btn_transformar.pack(side=tk.LEFT, padx=5)
 
-# Frame para la salida
+# Cuadro de texto de SALIDA
 frame_salida = tk.Frame(ventana)
 frame_salida.pack(pady=5)
 
-tk.Label(frame_salida, text="Texto mejorado:").pack(anchor='w')
-salida_texto = tk.Text(frame_salida, wrap=tk.WORD, width=80, height=15)
+tk.Label(frame_salida, text="Texto transformado (se conserva formato):").pack(anchor='w')
+salida_texto = tk.Text(frame_salida, wrap=tk.WORD, width=80, height=12)
 salida_texto.pack()
 
 ventana.mainloop()
